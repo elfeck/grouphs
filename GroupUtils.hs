@@ -15,7 +15,8 @@ multTableToStringTable (axis, tab) =
 
 multTableToString :: Show a => ([a], [[a]]) -> Int -> String
 multTableToString (axis, tab) fp =
-  frontPad ++ foldRow (head stab) ++ "\n\n" ++ foldl (++) [] [frontPad ++ (foldRow row) ++ "\n" | row <- tail stab]
+  frontPad ++ foldRow (head stab) ++ "\n\n" ++
+  foldl (++) [] [frontPad ++ (foldRow row) ++ "\n" | row <- tail stab]
   where maxW = maximum $ map length (foldl (++) [] stab)
         stab = multTableToStringTable (axis, tab)
         pad s n = s ++ replicate (n + maxW - length s) ' '
