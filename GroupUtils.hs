@@ -10,20 +10,24 @@ import Data.Maybe
 -- public functions
 multTableToStringTable :: Show a => ([a], [[a]]) -> [[String]]
 multTableToStringTable (axis, tab) =
-  ["f"] : formatRow axis : [formatRow r | r <- fulltab]
+  ("f" : map show  axis) : [map show r | r <- fulltab]
   where fulltab = zipWith (\ax xs -> (ax : xs)) axis tab
 
-multTableToString :: Show a => ([a], [[a]]) -> String
-multTableToString = undefined
+multTableToString :: Show a => ([a], [[a]]) -> Int -> String
+multTableToString (axis, tab) fp =
+  frontPad ++ foldRow (head stab) ++ "\n\n" ++ foldl (++) [] [frontPad ++ (foldRow row) ++ "\n" | row <- tail stab]
+  where maxW = maximum $ map length (foldl (++) [] stab)
+        stab = multTableToStringTable (axis, tab)
+        pad s n = s ++ replicate (n + maxW - length s) ' '
+        foldRow row = pad (head row) 2 ++
+                      foldl (++) [] [pad s 1 | s <- tail row]
+        frontPad = replicate fp ' '
 
 printMultTable :: Show a => ([a], [[a]]) -> IO()
-printMultTable = undefined
+printMultTable (axis, tab) = printS $ multTableToString (axis, tab) 0
 
 
 -- private function
-formatRow :: Show a => [a] -> [String]
-formatRow row = undefined
-
 replaceChars :: String -> [Char] -> [Char] -> String
 replaceChars [] _ _ = []
 replaceChars (c : st) chars repl

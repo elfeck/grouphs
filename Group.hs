@@ -7,6 +7,7 @@ module Group (
 
 import Data.List
 import Data.Maybe
+import GroupUtils
 
 -- definitions
 type BinOp a = (a -> a -> a)
@@ -17,7 +18,8 @@ data Group a = Group {
   }
 
 instance (Show a, Eq a) => Show (Group a) where
-  show (Group s f) = "G = (" ++ show s ++ "," ++ "+)"
+  show (Group s f) = "G = {\n" ++
+                     multTableToString (getMultTable (Group s f)) 6 ++ "    }"
 
 
 -- sample groups
