@@ -8,26 +8,36 @@ import GroupUtils
 -- definitions
 type BinOp a = (a -> a -> a)
 
-data Group a = Group {
-  set :: [a],
-  op :: (BinOp a)
-  }
+data Group a = Group { set :: [a], op :: (BinOp a) }
 
 instance (Show a, Eq a) => Show (Group a) where
   show (Group s f) = "G = {\n" ++
-                     multTableToString (getMultTable (Group s f)) 6 ++ "    }"
+                     tableToString (groupToTable (Group s f)) 6 ++ "    }"
+
 
 -- public functions
-constructGroup :: Eq a => [a] -> BinOp a -> Maybe (Group a)
-constructGroup s f
-  | checkSet s &&
-    isJust (getOne_ s f) &&
-    checkInv s f &&
-    isAss s f = Just (Group s f)
-  | otherwise = Nothing
+formsGroup :: Eq a => [a] -> BinOp a -> Bool
+formsGroup s f = checkSet s &&
+              isJust (getOne_ s f) &&
+              checkInv s f &&
+              isAss s f
 
-getMultTable :: Eq a => Group a -> ([a], [[a]])
-getMultTable (Group s f) = getMultTable_ s f
+isValidGroup :: Eq a => Group a -> Bool
+isValidGroup (Group s f) = formsGroup s f
+
+constructGroup :: Eq a => [a] -> BinOp a -> Maybe (Group a)
+constructGroup s f | formsGroup s f = Just (Group s f)
+                   | otherwise = Nothing
+
+tableToGroup :: Eq a => ([a], [[a]]) -> Maybe (Group a)
+tableToGroup (axis, tab) = constructGroup axis (tableToFunction (axis, tab))
+
+tableToFunction :: Eq a => ([a], [[a]]) -> BinOp a
+tableToFunction (axis, tab)  = \x y -> (tab !! pos x) !! pos y
+  where pos x = fromJust $ elemIndex x axis
+
+groupToTable :: Eq a => Group a -> ([a], [[a]])
+groupToTable (Group s f) = groupToTable_ s f
 
 getOne :: Eq a =>  Group a -> a
 getOne (Group s f) = fromJust (getOne_ s f)
@@ -47,10 +57,10 @@ orderElem (Group s f) x = go (Group s f) x 1
 
 isAbelian :: Eq a => Group a -> Bool
 isAbelian g = tab == tab'
-  where tab = snd (getMultTable g)
+  where tab = snd (groupToTable g)
         tab' = [[l !! i |  l <- tab] | i <- [0..length (head tab) - 1]]
 
--- functions to check group validity
+-- functions for to-be groups
 checkInv :: Eq a => [a] -> BinOp a -> Bool
 checkInv s f =
   length (filter isJust [getInv_ s f x | x <- s]) == length s
@@ -61,10 +71,10 @@ checkSet s = not (null s) && s == nub s
 getOne_ :: Eq a => [a] -> BinOp a -> Maybe a
 getOne_ s f | isNothing ind = Nothing
             | otherwise = Just (s !! (fromJust ind))
-  where ind = elemIndex s (snd (getMultTable_ s f))
+  where ind = elemIndex s (snd (groupToTable_ s f))
 
-getMultTable_ :: Eq a => [a] -> BinOp a -> ([a], [[a]])
-getMultTable_ s f = (s, [[f a b | a <- s] | b <- s])
+groupToTable_ :: Eq a => [a] -> BinOp a -> ([a], [[a]])
+groupToTable_ s f = (s, [[f a b | a <- s] | b <- s])
 
 getInv_ :: Eq a => [a] -> BinOp a -> a -> Maybe a
 getInv_ s f x | isNothing e || not (x `elem` s) = Nothing
