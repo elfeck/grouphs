@@ -2,13 +2,11 @@ module Group where
 
 import Data.List
 import Data.Maybe
+
 import GroupUtils
 
 -- definitions
 type BinOp a = (a -> a -> a)
-
-type Cycle = [Int]
-type Perm = [Cycle]
 
 data Group a = Group {
   set :: [a],
@@ -18,12 +16,6 @@ data Group a = Group {
 instance (Show a, Eq a) => Show (Group a) where
   show (Group s f) = "G = {\n" ++
                      multTableToString (getMultTable (Group s f)) 6 ++ "    }"
-
-
--- sample groups
-znz :: Int -> Group Int
-znz n = fromJust $ constructGroup [0..n-1] (\x y -> (x + y) `mod` n)
-
 
 -- public functions
 constructGroup :: Eq a => [a] -> BinOp a -> Maybe (Group a)
@@ -47,34 +39,16 @@ order :: Eq a => Group a -> Int
 order (Group s f) = length s
 
 orderElem :: Eq a => Group a -> a -> Int
-orderElem (Group s f) x = go (Group s f) x e 1
-  where e = getOne (Group s f)
-        go (Group s f) x e acc
-          | x == e = acc
-          | f x x == e = acc + 1
-          | otherwise = go (Group s f) (f x x) e (acc + 1)
+orderElem (Group s f) x = go (Group s f) x 1
+  where go (Group s f) y acc
+          | y == e = acc
+          | otherwise = go (Group s f) (f y x) (acc + 1)
+        e = getOne (Group s f)
 
 isAbelian :: Eq a => Group a -> Bool
 isAbelian g = tab == tab'
   where tab = snd (getMultTable g)
-        tab' = [[l !! i | i <- [0..length (head tab) - 1]] | l <- tab]
-
-
--- helper for perm
-applyPerm :: Perm -> Perm -> Perm
-applyPerm = undefined
-
-cycleToString :: Cycle -> String
-cycleToString c = go (show c) where
-  go [] = ""
-  go (s : st) | s == ',' = go st
-              | s == '[' = '(' : go st
-              | s == ']' = ')' : go st
-              | otherwise = s : go st
-
-permToString :: Perm -> String
-permToString cs = foldl (++) [] [cycleToString c | c <- cs]
-
+        tab' = [[l !! i |  l <- tab] | i <- [0..length (head tab) - 1]]
 
 -- functions to check group validity
 checkInv :: Eq a => [a] -> BinOp a -> Bool
