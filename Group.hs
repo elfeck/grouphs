@@ -49,8 +49,8 @@ getInv (Group s f) x = fromJust $ getInv_ s f x
 order :: Eq a => Group a -> Int
 order (Group s f) = length s
 
-orderElem :: Eq a => Group a -> a -> Int
-orderElem (Group s f) x = go (Group s f) x 1
+elemOrder :: Eq a => Group a -> a -> Int
+elemOrder (Group s f) x = go (Group s f) x 1
   where go (Group s f) y acc
           | y == e = acc
           | otherwise = go (Group s f) (f y x) (acc + 1)
@@ -64,12 +64,31 @@ isAbelian g = tab == tab'
 isCyclic :: Eq a => Group a -> Bool
 isCyclic (Group s f) = go s f
   where go [] f = False
-        go (x : xs) f | orderElem (Group s f) x == o = True
+        go (x : xs) f | elemOrder (Group s f) x == o = True
                       | otherwise = go xs f
         o = order (Group s f)
 
-minimalGeneratorSet :: Eq a => Group a -> [a]
-minimalGeneratorSet (Group s f) = undefined
+minimalGeneratingSets :: Eq a => Group a -> [[a]]
+minimalGeneratingSets (Group s f) = go 1
+  where go l | not (null (gener l)) = gener l
+             | otherwise = go (l + 1)
+        gener l = [x | x <- lenSubSets l s,
+                   null (s \\ generateFromSet (Group s f) x)]
+
+generateFromSet :: Eq a => Group a -> [a] -> [a]
+generateFromSet (Group s f) xs = go xs
+  where go gend | null ((nextGen gend) \\ gend) = gend
+                | otherwise = go (nextGen gend)
+        nextGen ys = takeCrossProduct (Group s f)
+                     (generateFromSetOnce (Group s f) ys)
+
+generateFromSetOnce :: Eq a => Group a -> [a] -> [a]
+generateFromSetOnce (Group s f) xs =
+  nub (foldl (++) [] [generateFrom (Group s f) x | x <- xs])
+
+takeCrossProduct :: Eq a => Group a -> [a] -> [a]
+takeCrossProduct (Group s f) xs = nub ([f x y | x <- xs, y <- xs] ++
+                                       [f y x | x <- xs, y <- xs])
 
 generateFrom :: Eq a => Group a -> a -> [a]
 generateFrom (Group s f) x = go x x
@@ -102,7 +121,7 @@ getOne_ s f | null xs = Nothing
 
 getOne_2 :: Eq a => [a] -> BinOp a -> Maybe a
 getOne_2 s f | isNothing ind = Nothing
-            | otherwise = Just (s !! (fromJust ind))
+             | otherwise = Just (s !! (fromJust ind))
   where ind = elemIndex s (snd (groupToTable_ s f))
 
 getInv_ :: Eq a => [a] -> BinOp a -> a -> Maybe a
