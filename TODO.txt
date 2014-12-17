@@ -1,0 +1,13 @@
+TODO grouphs
+===================================================
+(*) Group isomorphism
+(*) Group equality
+
+(*) All groups of order n
+(*) Better associativity test
+
+(*) Group actions
+(*) Normalizer, Centralizer, Center
+
+(*) All Subgroups
+(*) All normal subgroups

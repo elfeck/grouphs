@@ -5,23 +5,14 @@ import Group
 import ZnZGroup
 import SnGroup
 
+z6 = znz 6
+
+s3 = sn 3
+s4 = sn 4
+
 main :: IO ()
-main = test1
+main = test
 
-
--- Test Performance of tableToGroup type of groups
-test1 = do
-  let s4 = znz 100
-  let s4tab = groupToTable s4
-  let s4' = fromJust $ tableToGroup s4tab
-  print $ order s4
-  print $ order s4'
-  start <- getCurrentTime
-  print $ length (minimalGeneratingSets s4)
-  stop <- getCurrentTime
-  print (diffUTCTime stop start)
-  print "==========="
-  start <- getCurrentTime
-  print $ length (minimalGeneratingSets s4')
-  stop <- getCurrentTime
-  print (diffUTCTime stop start)
+test = do
+  putStr $ show l ++ "\n"
+  return ()

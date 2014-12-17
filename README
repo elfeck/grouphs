@@ -1,0 +1,10 @@
+This project provides a simple group data type for Haskell, as well as
+functionality to examine finite groups.
+
+Note, that the implementation is awful and slow.
+
+Important files:
+
+(*) src/Group.hs    contains the data type definition and main functionality
+(*) src/*Group.hs   contains a certain type of finite group
+(*) test/Test.hs    contains main and testing

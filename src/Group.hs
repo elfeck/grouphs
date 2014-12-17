@@ -13,7 +13,10 @@ data Group a = Group { set :: [a], op :: (BinOp a) }
 
 instance (Show a, Eq a) => Show (Group a) where
   show (Group s f) =
-    "G = {\n" ++ tableToString (groupToTable (Group s f)) 6 ++ "    }"
+    "G = {\n" ++ tableToString (groupToTable (Group s f)) 6 ++ "    }\n"
+
+instance (Eq a) => Eq (Group a) where
+  (==) g1 g2 = undefined
 
 
 -- public functions
@@ -73,11 +76,11 @@ minimalGeneratingSets (Group s f) = go 1
   where go l | not (null (gener l)) = gener l
              | otherwise = go (l + 1)
         gener l = [x | x <- lenSubSets l s,
-                   null (s \\ generateFromSet (Group s f) x)]
+                   setEq s (generateFromSet (Group s f) x)]
 
 generateFromSet :: Eq a => Group a -> [a] -> [a]
 generateFromSet (Group s f) xs = go xs
-  where go gend | null ((nextGen gend) \\ gend) = gend
+  where go gend | setEq (nextGen gend) gend = gend
                 | otherwise = go (nextGen gend)
         nextGen ys = takeCrossProduct (Group s f)
                      (generateFromSetOnce (Group s f) ys)
@@ -96,10 +99,29 @@ generateFrom (Group s f) x = go x x
                | otherwise = y : go x (f x y)
         e = getOne (Group s f)
 
-lenSubSets :: Eq a => Int -> [a] -> [[a]]
-lenSubSets 0 _ = [[]]
-lenSubSets _ [] = []
-lenSubSets n (x : xs) = map (x :) (lenSubSets (n - 1) xs) ++ lenSubSets n xs
+getCyclicSubgroups :: Eq a => Group a -> [Group a]
+getCyclicSubgroups (Group s f) = go subgrps []
+  where go [] ys = ys
+        go (x : xs) ys
+          | null [z | z <- ys, setEq (set x) (set z)] = go xs (x : ys)
+          | otherwise = go xs ys
+        subgrps = map fromJust
+                  (filter isJust
+                   [constructGroup (generateFrom (Group s f) x) f | x <- s])
+
+getSubgroups :: Eq a => Group a -> [Group a]
+getSubgroups (Group s f) = undefined
+
+nextGeneration :: Eq a => [Group a] -> [Group a]
+nextGeneration xs = undefined
+
+areIsomorphic :: (Eq a) => (Eq b) => Group a -> Group b -> Bool
+areIsomorphic g1 g2
+  | order g1 /= order g2 = False
+  | not $ setEq (map (elemOrder g1) (set g1)) (map (elemOrder g2) (set g2)) =
+      False
+  | otherwise = True
+
 
 -- functions for to-be groups
 checkInv :: Eq a => [a] -> BinOp a -> Bool
