@@ -24,6 +24,7 @@ formsGroup :: Eq a => [a] -> BinOp a -> Bool
 formsGroup s f = checkSet s &&
               isJust (getOne_ s f) &&
               checkInv s f &&
+              checkClosed s f &&
               checkAss s f
 
 isValidGroup :: Eq a => Group a -> Bool
@@ -99,21 +100,31 @@ generateFrom (Group s f) x = go x x
                | otherwise = y : go x (f x y)
         e = getOne (Group s f)
 
+getSubgroups :: Eq a => Group a -> [Group a]
+getSubgroups g = go cyclics
+  where go xs | length xs == length nextGen = xs
+              | otherwise = go nextGen
+          where nextGen = getCompoSubgroups g cyclics xs
+        cyclics = getCyclicSubgroups g
+
+getCompoSubgroups :: Eq a => Group a -> [Group a] -> [Group a] -> [Group a]
+getCompoSubgroups g ato comp = nubSubgroups r
+  where r = map fromJust (filter isJust [subgrp a c | a <- ato, c <- comp])
+        subgrp a c = constructGroup
+                     (generateFromSet g (union (set a) (set c))) (op g)
+
 getCyclicSubgroups :: Eq a => Group a -> [Group a]
-getCyclicSubgroups (Group s f) = go subgrps []
+getCyclicSubgroups (Group s f) = nubSubgroups subgrps
+  where subgrps = map fromJust (
+          filter isJust
+          [constructGroup (generateFrom (Group s f) x) f | x <- s])
+
+nubSubgroups :: Eq a => [Group a] -> [Group a]
+nubSubgroups subgrps = go subgrps []
   where go [] ys = ys
         go (x : xs) ys
           | null [z | z <- ys, setEq (set x) (set z)] = go xs (x : ys)
           | otherwise = go xs ys
-        subgrps = map fromJust
-                  (filter isJust
-                   [constructGroup (generateFrom (Group s f) x) f | x <- s])
-
-getSubgroups :: Eq a => Group a -> [Group a]
-getSubgroups (Group s f) = undefined
-
-nextGeneration :: Eq a => [Group a] -> [Group a]
-nextGeneration xs = undefined
 
 areIsomorphic :: (Eq a) => (Eq b) => Group a -> Group b -> Bool
 areIsomorphic g1 g2
@@ -130,6 +141,9 @@ checkInv s f =
 
 checkSet :: Eq a => [a] -> Bool
 checkSet s = not (null s) && s == nub s
+
+checkClosed :: Eq a => [a] -> BinOp a -> Bool
+checkClosed s f = setEq s (nub $ foldl (++) [] (snd $ groupToTable_ s f))
 
 checkAss :: Eq a => [a] -> BinOp a -> Bool
 checkAss s f = not $ False `elem` xs
