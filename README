@@ -1,7 +1,7 @@
-This project provides a simple group data type for Haskell, as well as
+This project provides a simple group data type for Haskell as well as
 functionality to examine finite groups.
 
-Note, that the implementation is awful and slow.
+Note that the implementation is awful and slow.
 
 Important files:
 

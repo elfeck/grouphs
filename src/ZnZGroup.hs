@@ -13,12 +13,12 @@ znzx n = fromJust $ constructGroup (allCoprimes n)
          (\x y -> (x * y) `mod` n)
 
 allCoprimes :: Int -> [Int]
-allCoprimes n = [x | x <- [1..n], isCoprime x n]
+allCoprimes n = [x | x <- [1..n], areCoprime x n]
 
-isCoprime :: Int -> Int -> Bool
-isCoprime 1 _ = True
-isCoprime _ 1 = True
-isCoprime a b = null $ intersect (primFactors a) (primFactors b)
+areCoprime :: Int -> Int -> Bool
+areCoprime 1 _ = True
+areCoprime _ 1 = True
+areCoprime a b = null $ intersect (primFactors a) (primFactors b)
 
 primFactors :: Int -> [Int]
 primFactors n

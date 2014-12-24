@@ -22,10 +22,10 @@ instance (Eq a) => Eq (Group a) where
 -- public functions
 formsGroup :: Eq a => [a] -> BinOp a -> Bool
 formsGroup s f = checkSet s &&
-              isJust (getOne_ s f) &&
+              isJust (one_ s f) &&
               checkInv s f &&
               checkClosed s f &&
-              checkAss s f
+              checkAssGen s f
 
 isValidGroup :: Eq a => Group a -> Bool
 isValidGroup (Group s f) = formsGroup s f
@@ -44,11 +44,11 @@ tableToFunction (axis, tab)  = \x y -> (tab !! pos x) !! pos y
 groupToTable :: Eq a => Group a -> MTable a
 groupToTable (Group s f) = groupToTable_ s f
 
-getOne :: Eq a =>  Group a -> a
-getOne (Group s f) = fromJust (getOne_ s f)
+one :: Eq a =>  Group a -> a
+one (Group s f) = fromJust (one_ s f)
 
-getInv :: Eq a => Group a -> a -> a
-getInv (Group s f) x = fromJust $ getInv_ s f x
+inv :: Eq a => Group a -> a -> a
+inv (Group s f) x = fromJust $ inv_ s f x
 
 order :: Eq a => Group a -> Int
 order (Group s f) = length s
@@ -58,7 +58,7 @@ elemOrder (Group s f) x = go (Group s f) x 1
   where go (Group s f) y acc
           | y == e = acc
           | otherwise = go (Group s f) (f y x) (acc + 1)
-        e = getOne (Group s f)
+        e = one (Group s f)
 
 isAbelian :: Eq a => Group a -> Bool
 isAbelian g = tab == tab'
@@ -72,6 +72,9 @@ isCyclic (Group s f) = go s f
                       | otherwise = go xs f
         o = order (Group s f)
 
+minimalGenerator :: Eq a => Group a -> [a]
+minimalGenerator g = head $ minimalGeneratingSets g
+
 minimalGeneratingSets :: Eq a => Group a -> [[a]]
 minimalGeneratingSets (Group s f) = go 1
   where go l | not (null (gener l)) = gener l
@@ -81,40 +84,46 @@ minimalGeneratingSets (Group s f) = go 1
 
 generateFromSet :: Eq a => Group a -> [a] -> [a]
 generateFromSet (Group s f) xs = go xs
-  where go gend | setEq (nextGen gend) gend = gend
-                | otherwise = go (nextGen gend)
-        nextGen ys = takeCrossProduct (Group s f)
-                     (generateFromSetOnce (Group s f) ys)
+  where go xs | setEq nextGen xs = xs
+              | otherwise = go nextGen
+          where nextGen = takeCrossProduct (Group s f)
+                          (generateFromSetOnce (Group s f) xs)
+
+-- not working
+generateFromSet2 :: Eq a => Group a -> [a] -> [a]
+generateFromSet2 (Group s f) xs = go xs
+  where go xs | setEq nextGen xs = xs
+              | otherwise = go nextGen
+          where nextGen = takeCrossProduct (Group s f) xs
 
 generateFromSetOnce :: Eq a => Group a -> [a] -> [a]
 generateFromSetOnce (Group s f) xs =
   nub (foldl (++) [] [generateFrom (Group s f) x | x <- xs])
 
 takeCrossProduct :: Eq a => Group a -> [a] -> [a]
-takeCrossProduct (Group s f) xs = nub ([f x y | x <- xs, y <- xs] ++
-                                       [f y x | x <- xs, y <- xs])
+takeCrossProduct (Group s f) xs = nub [f x y | x <- xs, y <- xs]
 
 generateFrom :: Eq a => Group a -> a -> [a]
 generateFrom (Group s f) x = go x x
   where go x y | y == e = [y]
                | otherwise = y : go x (f x y)
-        e = getOne (Group s f)
+        e = one (Group s f)
 
-getSubgroups :: Eq a => Group a -> [Group a]
-getSubgroups g = go cyclics
+subgroups :: Eq a => Group a -> [Group a]
+subgroups g = go cyclics
   where go xs | length xs == length nextGen = xs
               | otherwise = go nextGen
-          where nextGen = getCompoSubgroups g cyclics xs
-        cyclics = getCyclicSubgroups g
+          where nextGen = compoSubgroups g cyclics xs
+        cyclics = cyclicSubgroups g
 
-getCompoSubgroups :: Eq a => Group a -> [Group a] -> [Group a] -> [Group a]
-getCompoSubgroups g ato comp = nubSubgroups r
+compoSubgroups :: Eq a => Group a -> [Group a] -> [Group a] -> [Group a]
+compoSubgroups g ato comp = nubSubgroups r
   where r = map fromJust (filter isJust [subgrp a c | a <- ato, c <- comp])
         subgrp a c = constructGroup
                      (generateFromSet g (union (set a) (set c))) (op g)
 
-getCyclicSubgroups :: Eq a => Group a -> [Group a]
-getCyclicSubgroups (Group s f) = nubSubgroups subgrps
+cyclicSubgroups :: Eq a => Group a -> [Group a]
+cyclicSubgroups (Group s f) = nubSubgroups subgrps
   where subgrps = map fromJust (
           filter isJust
           [constructGroup (generateFrom (Group s f) x) f | x <- s])
@@ -137,7 +146,7 @@ areIsomorphic g1 g2
 -- functions for to-be groups
 checkInv :: Eq a => [a] -> BinOp a -> Bool
 checkInv s f =
-  length (filter isJust [getInv_ s f x | x <- s]) == length s
+  length (filter isJust [inv_ s f x | x <- s]) == length s
 
 checkSet :: Eq a => [a] -> Bool
 checkSet s = not (null s) && s == nub s
@@ -149,21 +158,24 @@ checkAss :: Eq a => [a] -> BinOp a -> Bool
 checkAss s f = not $ False `elem` xs
   where xs = [f (f a b) c == f a (f b c) | a <- s, b <- s, c <- s]
 
-getOne_ :: Eq a => [a] -> BinOp a -> Maybe a
-getOne_ s f | null xs = Nothing
-             | otherwise = Just $ head xs
+checkAssGen :: Eq a => [a] -> BinOp a -> Bool
+checkAssGen s f = checkAss (minimalGenerator (Group s f)) f
+
+one_ :: Eq a => [a] -> BinOp a -> Maybe a
+one_ s f | null xs = Nothing
+            | otherwise = Just $ head xs
   where xs = [x | x <- s, f x someE == someE]
         someE = head s
 
-getOne_2 :: Eq a => [a] -> BinOp a -> Maybe a
-getOne_2 s f | isNothing ind = Nothing
+one_2 :: Eq a => [a] -> BinOp a -> Maybe a
+one_2 s f | isNothing ind = Nothing
              | otherwise = Just (s !! (fromJust ind))
   where ind = elemIndex s (snd (groupToTable_ s f))
 
-getInv_ :: Eq a => [a] -> BinOp a -> a -> Maybe a
-getInv_ s f x | isNothing e || not (x `elem` s) = Nothing
+inv_ :: Eq a => [a] -> BinOp a -> a -> Maybe a
+inv_ s f x | isNothing e || not (x `elem` s) = Nothing
               | otherwise = find ((== fromJust e) . (f x)) s
-  where e = getOne_ s f
+  where e = one_ s f
 
 groupToTable_ :: Eq a => [a] -> BinOp a -> MTable a
 groupToTable_ s f = (s, [[f a b | a <- s] | b <- s])
