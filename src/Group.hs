@@ -9,17 +9,21 @@ import GroupUtils
 type BinOp a = (a -> a -> a)
 type MTable a = ([a], [[a]])
 
-data Group a = Group { set :: [a], op :: (BinOp a) }
+data Group a = Group { set :: [a]
+                     , op :: (BinOp a)
+                     }
+
+data GAction a b = GAction (Group a) [b] (a -> b -> b)
 
 instance (Show a, Eq a) => Show (Group a) where
   show (Group s f) =
-    "G = {\n" ++ tableToString (groupToTable (Group s f)) 6 ++ "    }\n"
+    "G = {\n" ++ tableToString (groupToTable (Group s f)) 6 ++ "    }"
 
-instance (Eq a) => Eq (Group a) where
-  (==) g1 g2 = undefined
+instance (Show a, Show b, Eq a, Eq b) => Show (GAction a b) where
+  show (GAction g xs p) = "Action = {\n\n  " ++ show xs ++ "\n\n  G = {\n" ++
+                          tableToString (groupToTable g) 8 ++
+                          "      }\n}"
 
-
--- public functions
 formsGroup :: Eq a => [a] -> BinOp a -> Bool
 formsGroup s f = checkSet s &&
               isJust (one_ s f) &&
@@ -89,7 +93,6 @@ generateFromSet (Group s f) xs = go xs
           where nextGen = takeCrossProduct (Group s f)
                           (generateFromSetOnce (Group s f) xs)
 
--- not working
 generateFromSet2 :: Eq a => Group a -> [a] -> [a]
 generateFromSet2 (Group s f) xs = go xs
   where go xs | setEq nextGen xs = xs
@@ -135,15 +138,28 @@ nubSubgroups subgrps = go subgrps []
           | null [z | z <- ys, setEq (set x) (set z)] = go xs (x : ys)
           | otherwise = go xs ys
 
-areIsomorphic :: (Eq a) => (Eq b) => Group a -> Group b -> Bool
+areIsomorphic :: (Eq a, Eq b) => Group a -> Group b -> Bool
 areIsomorphic g1 g2
   | order g1 /= order g2 = False
   | not $ setEq (map (elemOrder g1) (set g1)) (map (elemOrder g2) (set g2)) =
       False
   | otherwise = True
 
+constructAction :: (Eq a, Eq b) => Group a -> [b] -> (a -> b -> b) ->
+                   Maybe (GAction a b)
+constructAction g xs p | formsAction g xs p = Just (GAction g xs p)
+                       | otherwise = Nothing
 
--- functions for to-be groups
+formsAction :: (Eq a, Eq b) => Group a -> [b] -> (a -> b -> b) -> Bool
+formsAction (Group s f) xs p = checkCom && checkId
+  where checkCom = null
+                   [g | g <- s, h <- s, x <- xs, p (f g h) x /= p g (p h x)]
+        checkId = null [x | x <- xs, p e x /= x ]
+        e = one (Group s f)
+
+isValidAction :: (Eq a, Eq b) => GAction a b -> Bool
+isValidAction (GAction g xs p) = formsAction g xs p
+
 checkInv :: Eq a => [a] -> BinOp a -> Bool
 checkInv s f =
   length (filter isJust [inv_ s f x | x <- s]) == length s
@@ -155,15 +171,15 @@ checkClosed :: Eq a => [a] -> BinOp a -> Bool
 checkClosed s f = setEq s (nub $ foldl (++) [] (snd $ groupToTable_ s f))
 
 checkAss :: Eq a => [a] -> BinOp a -> Bool
-checkAss s f = not $ False `elem` xs
-  where xs = [f (f a b) c == f a (f b c) | a <- s, b <- s, c <- s]
+checkAss s f = null xs
+  where xs = [a | a <- s, b <- s, c <- s, f (f a b) c /= f a (f b c)]
 
 checkAssGen :: Eq a => [a] -> BinOp a -> Bool
 checkAssGen s f = checkAss (minimalGenerator (Group s f)) f
 
 one_ :: Eq a => [a] -> BinOp a -> Maybe a
 one_ s f | null xs = Nothing
-            | otherwise = Just $ head xs
+         | otherwise = Just $ head xs
   where xs = [x | x <- s, f x someE == someE]
         someE = head s
 
@@ -174,7 +190,7 @@ one_2 s f | isNothing ind = Nothing
 
 inv_ :: Eq a => [a] -> BinOp a -> a -> Maybe a
 inv_ s f x | isNothing e || not (x `elem` s) = Nothing
-              | otherwise = find ((== fromJust e) . (f x)) s
+           | otherwise = find ((== fromJust e) . (f x)) s
   where e = one_ s f
 
 groupToTable_ :: Eq a => [a] -> BinOp a -> MTable a
