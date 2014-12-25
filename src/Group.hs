@@ -5,14 +5,11 @@ import Data.Maybe
 
 import GroupUtils
 
--- definitions
+
 type BinOp a = (a -> a -> a)
 type MTable a = ([a], [[a]])
 
-data Group a = Group { set :: [a]
-                     , op :: (BinOp a)
-                     }
-
+data Group a = Group { set :: [a], op :: (BinOp a) }
 data GAction a b = GAction (Group a) [b] (a -> b -> b)
 
 instance (Show a, Eq a) => Show (Group a) where
@@ -21,8 +18,7 @@ instance (Show a, Eq a) => Show (Group a) where
 
 instance (Show a, Show b, Eq a, Eq b) => Show (GAction a b) where
   show (GAction g xs p) = "Action = {\n\n  " ++ show xs ++ "\n\n  G = {\n" ++
-                          tableToString (groupToTable g) 8 ++
-                          "      }\n}"
+                          tableToString (groupToTable g) 8 ++ "      }\n}"
 
 formsGroup :: Eq a => [a] -> BinOp a -> Bool
 formsGroup s f = checkSet s &&
@@ -151,11 +147,11 @@ constructAction g xs p | formsAction g xs p = Just (GAction g xs p)
                        | otherwise = Nothing
 
 formsAction :: (Eq a, Eq b) => Group a -> [b] -> (a -> b -> b) -> Bool
-formsAction (Group s f) xs p = checkCom && checkId
-  where checkCom = null
-                   [g | g <- s, h <- s, x <- xs, p (f g h) x /= p g (p h x)]
-        checkId = null [x | x <- xs, p e x /= x ]
-        e = one (Group s f)
+formsAction (Group s f) xs p = checkCom && checkId && checkCl
+  where checkCom =
+          null [g | g <- s, h <- s, x <- xs, p (f g h) x /= p g (p h x)]
+        checkId = null [x | x <- xs, p (one (Group s f)) x /= x ]
+        checkCl = null [x | g <- s, x <- xs, not $ (p g x) `elem` xs]
 
 isValidAction :: (Eq a, Eq b) => GAction a b -> Bool
 isValidAction (GAction g xs p) = formsAction g xs p
@@ -168,7 +164,7 @@ checkSet :: Eq a => [a] -> Bool
 checkSet s = not (null s) && s == nub s
 
 checkClosed :: Eq a => [a] -> BinOp a -> Bool
-checkClosed s f = setEq s (nub $ foldl (++) [] (snd $ groupToTable_ s f))
+checkClosed s f = null [x | x <- s, y <- s, not $ f x y `elem` s]
 
 checkAss :: Eq a => [a] -> BinOp a -> Bool
 checkAss s f = null xs
