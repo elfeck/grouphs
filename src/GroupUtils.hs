@@ -3,7 +3,6 @@ module GroupUtils where
 import Data.List
 import Data.Maybe
 
--- math utility
 lenSubSets :: Eq a => Int -> [a] -> [[a]]
 lenSubSets 0 _ = [[]]
 lenSubSets _ [] = []
@@ -12,7 +11,6 @@ lenSubSets n (x : xs) = map (x :) (lenSubSets (n - 1) xs) ++ lenSubSets n xs
 setEq :: Eq a => [a] -> [a] -> Bool
 setEq s1 s2 = length s1 == length s2 && null (s1 \\ s2)
 
--- print utility
 tableToStringTable :: Show a => ([a], [[a]]) -> [[String]]
 tableToStringTable (axis, tab) =
   ("f" : map show  axis) : [map show r | r <- fulltab]
@@ -32,8 +30,6 @@ tableToString (axis, tab) fp =
 printMultTable :: Show a => ([a], [[a]]) -> IO()
 printMultTable (axis, tab) = printS $ tableToString (axis, tab) 0
 
-
--- private function
 replaceChars :: String -> [Char] -> [Char] -> String
 replaceChars [] _ _ = []
 replaceChars (c : st) chars repl
