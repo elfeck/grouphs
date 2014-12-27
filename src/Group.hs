@@ -51,6 +51,13 @@ one (Group s f) = fromJust (one_ s f)
 inv :: Eq a => Group a -> a -> a
 inv (Group s f) x = fromJust $ inv_ s f x
 
+-- | b = xax^-1
+conj :: Eq a => Group a -> a -> a -> a
+conj (Group s f) a x = f x (f a (inv (Group s f) x))
+
+conjs :: Eq a => Group a -> a -> [a]
+conjs (Group s f) a = [conj (Group s f) a x | x <- s]
+
 order :: Eq a => Group a -> Int
 order (Group s f) = length s
 
@@ -94,6 +101,7 @@ generateFromSet (Group s f) xs = go xs
           where nextGen = takeCrossProduct (Group s f)
                           (generateFromSetOnce (Group s f) xs)
 
+-- | produces wrong result
 generateFromSet2 :: Eq a => Group a -> [a] -> [a]
 generateFromSet2 (Group s f) xs = go xs
   where go xs | setEq nextGen xs = xs
@@ -118,17 +126,18 @@ generateFrom (Group s f) x = go x x
   Subgroups
 -}
 subgroups :: Eq a => Group a -> [Group a]
-subgroups g = go cyclics
-  where go xs | length xs == length nextGen = xs
+subgroups g = go atoms
+  where go xs | length xs == length nextGen = nextGen
               | otherwise = go nextGen
-          where nextGen = compoSubgroups g cyclics xs
-        cyclics = cyclicSubgroups g
+          where nextGen = compoSubgroups g atoms xs
+        atoms = cyclicSubgroups g
 
 compoSubgroups :: Eq a => Group a -> [Group a] -> [Group a] -> [Group a]
 compoSubgroups g ato comp = nubSubgroups r
   where r = map fromJust (filter isJust [subgrp a c | a <- ato, c <- comp])
-        subgrp a c = constructGroup
-                     (generateFromSet g (union (set a) (set c))) (op g)
+        subgrp a c | (order g) `mod` (length subg) /= 0 = Nothing
+                   | otherwise = constructGroup subg (op g)
+          where subg = generateFromSet g (union (set a) (set c))
 
 cyclicSubgroups :: Eq a => Group a -> [Group a]
 cyclicSubgroups (Group s f) = nubSubgroups subgrps
@@ -143,6 +152,27 @@ nubSubgroups subgrps = go subgrps []
           | null [z | z <- ys, setEq (set x) (set z)] = go xs (x : ys)
           | otherwise = go xs ys
 
+-- | Subgroup -> g in Group
+leftCoset :: Eq a => Group a -> a -> [a]
+leftCoset (Group s f) g = [f g x | x <- s]
+
+-- | Group -> Subgroup
+leftCosets :: Eq a => Group a -> Group a -> [[a]]
+leftCosets g h = nubBy setEq [leftCoset h x | x <- (set g)]
+
+rightCoset :: Eq a => Group a -> a -> [a]
+rightCoset (Group s f) g = [f x g | x <- s]
+
+rightCosets :: Eq a => Group a -> Group a -> [[a]]
+rightCosets g h = nubBy setEq [rightCoset h x | x <- (set g)]
+
+-- | Group -> Subgroup
+isNormalSubgroup :: Eq a => Group a -> Group a -> Bool
+isNormalSubgroup g h =
+  null [x | x <- (set g), not $ setEq (leftCoset h x) (rightCoset h x)]
+
+normalSubgroups :: Eq a => Group a -> [Group a]
+normalSubgroups g = [h | h <- subgroups g, isNormalSubgroup g h]
 
 {-
   Isomorphism
@@ -166,15 +196,16 @@ formsGroup s f = ckSet && ckOne && ckInv && ckClo && ckAssGen
         ckClo = null [x | x <- s, y <- s, not $ f x y `elem` s]
         ckAssGen = checkAss (minimalGenerator (Group s f)) f
 
+-- | runs in O(n^3)
+checkAss :: Eq a => [a] -> BinOp a -> Bool
+checkAss s f = null xs
+  where xs = [a | a <- s, b <- s, c <- s, f (f a b) c /= f a (f b c)]
+
 formsAction :: (Eq a, Eq b) => Group a -> [b] -> (a -> b -> b) -> Bool
 formsAction (Group s f) xs p = ckCo && ckId && ckCl
   where ckCo = null [g | g <- s, h <- s, x <- xs, p (f g h) x /= p g (p h x)]
         ckId = null [x | x <- xs, p (one (Group s f)) x /= x ]
         ckCl = null [x | g <- s, x <- xs, not $ (p g x) `elem` xs]
-
-checkAss :: Eq a => [a] -> BinOp a -> Bool
-checkAss s f = null xs
-  where xs = [a | a <- s, b <- s, c <- s, f (f a b) c /= f a (f b c)]
 
 one_ :: Eq a => [a] -> BinOp a -> Maybe a
 one_ s f | null xs = Nothing
@@ -182,6 +213,7 @@ one_ s f | null xs = Nothing
   where xs = [x | x <- s, f x someE == someE]
         someE = head s
 
+-- | slower than above
 one_2 :: Eq a => [a] -> BinOp a -> Maybe a
 one_2 s f | isNothing ind = Nothing
              | otherwise = Just (s !! (fromJust ind))
