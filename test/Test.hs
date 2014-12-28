@@ -21,7 +21,8 @@ main :: IO ()
 main = test
 
 test = do
+  print $ order s5
   start <- getCurrentTime
-  print $ length $ cyclicSubgroups (znz 120)
+  print $ length $ subgroups s5
   end <- getCurrentTime
   print $ diffUTCTime end start

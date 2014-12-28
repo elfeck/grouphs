@@ -55,8 +55,12 @@ inv (Group s f) x = fromJust $ inv_ s f x
 conj :: Eq a => Group a -> a -> a -> a
 conj (Group s f) a x = f x (f a (inv (Group s f) x))
 
-conjs :: Eq a => Group a -> a -> [a]
-conjs (Group s f) a = [conj (Group s f) a x | x <- s]
+-- | Y = xAx^-1
+conjs :: Eq a => Group a -> [a] -> a -> [a]
+conjs g as x = [conj g a x | a <- as]
+
+conjg :: Eq a => Group a -> a -> [a]
+conjg g x = conjs g (set g) x
 
 order :: Eq a => Group a -> Int
 order (Group s f) = length s
@@ -146,13 +150,15 @@ cyclicSubgroups (Group s f) = nubSubgroups subgrps
           [constructGroup (generateFrom (Group s f) x) f | x <- s])
 
 nubSubgroups :: Eq a => [Group a] -> [Group a]
-nubSubgroups subgrps = go subgrps []
+nubSubgroups subgrps = nubBy (\a b -> setEq (set a) (set b)) subgrps
+
+nubSubgroups2 :: Eq a => [Group a] -> [Group a]
+nubSubgroups2 subgrps = go subgrps []
   where go [] ys = ys
         go (x : xs) ys
           | null [z | z <- ys, setEq (set x) (set z)] = go xs (x : ys)
           | otherwise = go xs ys
 
--- | Subgroup -> g in Group
 leftCoset :: Eq a => Group a -> a -> [a]
 leftCoset (Group s f) g = [f g x | x <- s]
 
@@ -173,6 +179,19 @@ isNormalSubgroup g h =
 
 normalSubgroups :: Eq a => Group a -> [Group a]
 normalSubgroups g = [h | h <- subgroups g, isNormalSubgroup g h]
+
+centralizer :: Eq a => Group a -> [a] -> Group a
+centralizer (Group s f) as =
+  fromJust $
+  constructGroup [x | x <- s, null [a | a <- as, a /= conj (Group s f) a x]] f
+
+normalizer :: Eq a => Group a -> [a] -> Group a
+normalizer (Group s f) as =
+  fromJust $ constructGroup [x | x <- s, setEq as (conjs (Group s f) as x)] f
+
+center :: Eq a => Group a -> Group a
+center g = centralizer g (set g)
+
 
 {-
   Isomorphism
