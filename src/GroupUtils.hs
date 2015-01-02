@@ -11,6 +11,9 @@ lenSubSets n (x : xs) = map (x :) (lenSubSets (n - 1) xs) ++ lenSubSets n xs
 setEq :: Eq a => [a] -> [a] -> Bool
 setEq s1 s2 = length s1 == length s2 && null (s1 \\ s2)
 
+nubSEq :: Eq a => [[a]] -> [[a]]
+nubSEq = nubBy setEq
+
 tableToStringTable :: Show a => ([a], [[a]]) -> [[String]]
 tableToStringTable (axis, tab) =
   ("f" : map show  axis) : [map show r | r <- fulltab]

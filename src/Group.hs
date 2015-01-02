@@ -131,17 +131,28 @@ generateFrom (Group s f) x = go x x
 -}
 subgroups :: Eq a => Group a -> [Group a]
 subgroups g = go atoms
-  where go xs | length xs == length nextGen = nextGen
+  where atoms = cyclicSubgroups g
+        go xs | length xs == length nextGen = nextGen
               | otherwise = go nextGen
-          where nextGen = compoSubgroups g atoms xs
-        atoms = cyclicSubgroups g
+            where nextGen = compoSubgroups g atoms xs
 
+-- | Takes atoms and previous composites and produces cross-product-gen
 compoSubgroups :: Eq a => Group a -> [Group a] -> [Group a] -> [Group a]
 compoSubgroups g ato comp = nubSubgroups r
-  where r = map fromJust (filter isJust [subgrp a c | a <- ato, c <- comp])
-        subgrp a c | (order g) `mod` (length subg) /= 0 = Nothing
+  where o = order g
+        unions = (nubSEq [union (set a) (set c) | a <- ato, c <- comp])
+        constr x | o `mod` length x /= 0 = Nothing
+                 | otherwise = constructGroup x (op g)
+        r = catMaybes (map constr generated)
+          where generated = nubSEq (map (generateFromSet g) unions)
+
+-- | Less efficient, generates from whole cross-prod including duplicates
+compoSubgroups2 :: Eq a => Group a -> [Group a] -> [Group a] -> [Group a]
+compoSubgroups2 g ato comp = catMaybes [subgrp a c | a <- ato, c <- comp]
+  where subgrp a c | (order g) `mod` (length subg) /= 0 = Nothing
                    | otherwise = constructGroup subg (op g)
           where subg = generateFromSet g (union (set a) (set c))
+
 
 cyclicSubgroups :: Eq a => Group a -> [Group a]
 cyclicSubgroups (Group s f) = nubSubgroups subgrps
@@ -191,6 +202,19 @@ normalizer (Group s f) as =
 
 center :: Eq a => Group a -> Group a
 center g = centralizer g (set g)
+
+
+{-
+  Group action stuff
+-}
+stabilizer :: (Eq a, Eq b) => GAction a b -> b -> Group a
+stabilizer (GAction g xs p) a =
+  fromJust $ constructGroup [y | y <- (set g), p y a == a] (op g)
+
+kernel :: (Eq a, Eq b) => GAction a b -> Group a
+kernel (GAction g xs p) =
+  fromJust $
+  constructGroup [y | y <- (set g), null [x | x <- xs, x /= p y x]] (op g)
 
 
 {-

@@ -5,9 +5,10 @@ TODO grouphs
 
 (*) All groups of order n
 
-(*) Group actions
-(*) Normalizer, Centralizer, Center
-(*) All normal subgroups
+(*) GL and SL
+(*) Dihedral group
+
+(#) Group actions
 
 
 TODO Proves
